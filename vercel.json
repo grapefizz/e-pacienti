@@ -3,12 +3,7 @@
   "builds": [
     {
       "src": "app.py",
-      "use": "@vercel/python",
-      "config": {
-        "build_etc": [
-          "unixodbc-dev"
-        ]
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
