@@ -1,29 +1,3 @@
 {
-  "3": {
-    "patient_id": 3278,
-    "filename": "3.png"
-  },
-  "4": {
-    "patient_id": 3278,
-    "filename": "4.png"
-  },
-  "5": {
-    "patient_id": 3278,
-    "filename": "5.png"
-  },
-  "6": {
-    "patient_id": 1,
-    "filename": "6.png"
-  },
-  "7": {
-    "patient_id": 2,
-    "filename": "7.png"
-  },
-    "1": [
-    { "id": "abc123.jpg", "filename": "abc123.jpg" },
-    { "id": "xyz456.jpg", "filename": "xyz456.jpg" }
-  ],
-  "2": [
-    { "id": "def789.jpg", "filename": "def789.jpg" }
-  ]
+  "1": []
 }

@@ -315,25 +315,41 @@ def save_photo_data(data):
 @app.route('/upload_photo/<int:patient_id>', methods=['POST'])
 def upload_photo(patient_id):
     if 'photo' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-
+        return jsonify({'error': 'No photo uploaded'}), 400
     file = request.files['photo']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     if file and allowed_file(file.filename):
-        photos = load_photos()
-        photo_id = str(max([int(k) for k in photos.keys()], default=0) + 1)
-        ext = secure_filename(file.filename).rsplit('.', 1)[1].lower()
-        filename = f"{photo_id}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        photos[photo_id] = {
-            "patient_id": patient_id,
-            "filename": filename
-        }
-        save_photos(photos)
-        return jsonify({"status": "Photo uploaded", "photo_id": photo_id})
-    return jsonify({'error': 'Invalid file type'}), 400
+        filename = secure_filename(file.filename)
+        # Optionally, make filename unique per patient
+        filename = f"{patient_id}_{filename}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+        # Load existing photo data
+        if os.path.exists('photos.json'):
+            with open('photos.json', 'r') as f:
+                all_photos = json.load(f)
+        else:
+            all_photos = {}
+
+        # Ensure patient_id key exists and is a list
+        pid = str(patient_id)
+        if pid not in all_photos or not isinstance(all_photos[pid], list):
+            all_photos[pid] = []
+
+        # Append new photo info
+        all_photos[pid].append({
+            'patient_id': patient_id,
+            'filename': filename
+        })
+
+        # Save back to file
+        with open('photos.json', 'w') as f:
+            json.dump(all_photos, f, indent=2)
+
+        return jsonify({'status': 'Photo uploaded', 'filename': filename})
+    else:
+        return jsonify({'error': 'Invalid file type'}), 400
 
 @app.route('/photos/<filename>')
 def get_photo(filename):
@@ -353,17 +369,31 @@ def get_patient_photos(patient_id):
 
     return jsonify(all_photos.get(str(patient_id), []))
 
-@app.route('/delete_photo/<photo_id>', methods=['DELETE'])
-def delete_photo(photo_id):
-    photos = load_photos()
-    if photo_id in photos:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], photos[photo_id]['filename'])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-        del photos[photo_id]
-        save_photos(photos)
-        return jsonify({"status": "Photo deleted"})
-    return jsonify({'error': 'Photo not found'}), 404
+@app.route('/delete_photo/<filename>', methods=['DELETE'])
+def delete_photo(filename):
+    # Load all photos
+    with open('photos.json', 'r') as f:
+        all_photos = json.load(f)
+
+    found = False
+    # Remove the photo from the correct patient's list
+    for pid, photos in all_photos.items():
+        new_photos = [p for p in photos if p['filename'] != filename]
+        if len(new_photos) != len(photos):
+            all_photos[pid] = new_photos
+            found = True
+            # Optionally, delete the file from disk
+            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
+            break
+
+    if found:
+        with open('photos.json', 'w') as f:
+            json.dump(all_photos, f, indent=2)
+        return jsonify({'status': 'Photo deleted'})
+    else:
+        return jsonify({'error': 'Photo not found'}), 404
 
     
 

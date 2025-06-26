@@ -361,19 +361,80 @@ async function updateTreatment() {
     }
 
 async function loadPatientPhotos(patientId) {
+  // This check is important for the initial page load
+  if (!patientId) {
+    document.getElementById("photoPreviewContainer").innerHTML = "";
+    return;
+  }
+
   const res = await fetch(`/patient_photos/${patientId}`);
-  if (!res.ok) return;
+  if (!res.ok) {
+    console.error("Could not load patient photos.");
+    return;
+  }
 
   const photos = await res.json();
+  console.log("Photos response:", photos); // <-- Add this line for debugging
+
   const container = document.getElementById("photoPreviewContainer");
   container.innerHTML = "";
 
-  photos.forEach(photo => {
-    const img = document.createElement("img");
-    img.src = `/photos/${photo.filename}`;
-    img.classList.add("photo-thumb");
-    container.appendChild(img);
-  });
+  // Ensure photos is always an array
+  let safePhotos = [];
+  if (Array.isArray(photos)) {
+    safePhotos = photos;
+  } else if (photos && typeof photos === "object" && photos.length === undefined) {
+    // If you get an object, not an array, try to convert to array (optional)
+    safePhotos = Object.values(photos);
+  } // else leave as empty array
+
+safePhotos.forEach(photo => {
+  if (!photo || !photo.filename) return;
+
+  // Create a wrapper div for positioning
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "relative";
+  wrapper.style.display = "inline-block";
+  wrapper.style.margin = "5px";
+
+  // Create the image
+  const img = document.createElement("img");
+  img.src = `/photos/${photo.filename}`;
+  img.classList.add("photo-thumb");
+  img.onclick = () => enlargePhoto(img.src);
+
+  // Create the delete button
+  const delBtn = document.createElement("span");
+  delBtn.textContent = "✖";
+  delBtn.title = "Delete photo";
+  delBtn.style.position = "absolute";
+  delBtn.style.top = "2px";
+  delBtn.style.right = "2px";
+  delBtn.style.background = "rgba(255,255,255,0.8)";
+  delBtn.style.color = "red";
+  delBtn.style.borderRadius = "50%";
+  delBtn.style.padding = "2px 6px";
+  delBtn.style.cursor = "pointer";
+  delBtn.style.fontWeight = "bold";
+  delBtn.style.fontSize = "16px";
+  delBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (confirm("Delete this photo?")) {
+      deletePhoto(photo.filename, patientId);
+    }
+  };
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(delBtn);
+  container.appendChild(wrapper);
+});
+}
+
+async function deletePhoto(filename, patientId) {
+  const res = await fetch(`/delete_photo/${filename}`, { method: 'DELETE' });
+  const result = await res.json();
+  alert(result.status || result.error);
+  loadPatientPhotos(patientId);
 }
 
 async function uploadPhoto() {
@@ -384,61 +445,27 @@ async function uploadPhoto() {
   const formData = new FormData();
   formData.append('photo', input.files[0]);
 
-  const res = await fetch(`/upload_photo/${selectedPatientId}`, {
-    method: 'POST',
-    body: formData
-  });
-  const result = await res.json();
-  alert(result.status || result.error);
-  input.value = '';
-  loadPhotos();
-}
+  try {
+    const res = await fetch(`/upload_photo/${selectedPatientId}`, {
+      method: 'POST',
+      body: formData
+    });
+    const result = await res.json();
 
-async function loadPhotos() {
-  const res = await fetch(`/photos/${selectedPatientId}`);
-  const photos = await res.json();
-  const gallery = document.getElementById('photoGallery');
-  gallery.innerHTML = '';
-  photos.forEach(photo => {
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'relative';
-    wrapper.style.width = '100px';
-    wrapper.style.height = '100px';
+    if (res.ok) {
+      alert(result.status || 'Upload successful!');
+      input.value = ''; // Clear the file input
 
-    const img = document.createElement('img');
-    img.src = `/photos/${photo.filename}`;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '6px';
-    img.style.cursor = 'pointer';
-    img.onclick = () => enlargePhoto(img.src);
+      // <<< FIX: Call the correct function to refresh the gallery >>>
+      loadPatientPhotos(selectedPatientId);
 
-    const btn = document.createElement('button');
-    btn.textContent = '×';
-    btn.style.position = 'absolute';
-    btn.style.top = '-6px';
-    btn.style.right = '-6px';
-    btn.style.width = '20px';
-    btn.style.height = '20px';
-    btn.style.borderRadius = '50%';
-    btn.style.border = 'none';
-    btn.style.background = 'red';
-    btn.style.color = 'white';
-    btn.style.fontSize = '12px';
-    btn.style.cursor = 'pointer';
-    btn.onclick = async (e) => {
-      e.stopPropagation();
-      if (confirm("Delete this photo?")) {
-        await fetch(`/delete_photo/${photo.photo_id}`, { method: 'DELETE' });
-        loadPhotos();
-      }
-    };
-
-    wrapper.appendChild(img);
-    wrapper.appendChild(btn);
-    gallery.appendChild(wrapper);
-  });
+    } else {
+      alert(result.error || 'Upload failed.');
+    }
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    alert('An error occurred during the upload.');
+  }
 }
 
 let scale = 1;
@@ -514,10 +541,11 @@ zoomedImg.addEventListener('mousedown', function (e) {
 
 
 
-    window.onload = () => {
-      loadPatients();
-      loadTreaters();
-      loadPatientPhotos();
-      document.getElementById('treatDate').value = getToday();
-    };
+window.onload = () => {
+  loadPatients();
+  loadTreaters();
+  // We removed loadPatientPhotos() from here.
+  // It is correctly called from loadPatientInfo() when you select a patient.
+  document.getElementById('treatDate').value = getToday();
+};
     
