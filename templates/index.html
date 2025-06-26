@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dental Patient Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      margin: 0;
+      background: #f4f7fb;
+      padding: 20px;
+      color: #333;
+    }
+    h2, h3 {
+      margin-bottom: 15px;
+      color: #1a202c;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+      padding: 20px;
+      flex: 1 1 400px;
+      min-width: 300px;
+      animation: fadeIn 0.5s ease;
+    }
+    input, select, button {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      width: 100%;
+      transition: 0.2s ease;
+    }
+    input:focus, select:focus {
+      border-color: #007bff;
+      outline: none;
+      background-color: #f0f8ff;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #patientList {
+      border: 1px solid #ddd;
+      max-height: 200px;
+      overflow-y: auto;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .patientItem {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      transition: background 0.2s;
+    }
+    .patientItem:hover {
+      background-color: #e9f5ff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+    #balance {
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+    }
+
+        /* Zoomable Image Modal */
+    #photoModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    #photoModal img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 0.1s ease;
+      cursor: grab;
+    }
+
+  .photo-thumb {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .photo-thumb:hover {
+    transform: scale(1.05);
+  }
+
+
+
+    .selected-row {
+      background-color: #e0f7ff !important;
+    }
+
+    #labSelect option[disabled] {
+      color: #888 !important;
+    }
+
+    #labSelect option[hidden] {
+      color: #888 !important;
+    }
+
+
+  </style>
+</head>
+<body>
+
+  <div id="loginOverlay" style="
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(255,255,255,0.95);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: 'Inter', sans-serif;
+">
+  <div style="background:#fff; padding:20px 30px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1);">
+    <h2 style="margin-top:0;">Login</h2>
+    <input id="loginUser" placeholder="Username" style="margin-bottom:10px; padding:10px; width:200px;">
+    <input id="loginPass" type="password" placeholder="Password" style="margin-bottom:10px; padding:10px; width:200px;">
+    <button onclick="checkLogin()" style="padding:10px 20px;">Login</button>
+    <p id="loginError" style="color:red; margin-top:10px; display:none;">Invalid credentials</p>
+  </div>
+</div>
+
+
+  <h2>Dental Patient Manager</h2>
+  <div class="container">
+    <div class="card">
+      <h3>Patients</h3>
+      <input type="text" id="search" placeholder="Search patients...">
+      <div id="patientList"></div>
+
+      <h3>Patient Info</h3>
+      <input type="text" id="name" placeholder="Name">
+      <input type="text" id="tel" placeholder="Phone">
+      <input type="text" id="dob" placeholder="Date of Birth (dd/mm/yyyy)">
+      <input type="text" id="address" placeholder="Address">
+      <input type="text" id="personal_number" placeholder="Personal Number (10 digits, optional)" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+      <input type="text" id="medical_alert" placeholder="Medical Alert">
+      <div id="patientActionButtons">
+        <button id="addPatientBtn" onclick="addPatient()" style="background:#28a745;">Add Patient</button>
+
+        <button id="updatePatientBtn" onclick="updatePatient()" style="display:none;">Update Patient</button>
+        <button id="cancelPatientBtn" onclick="resetPatientForm()" style="display:none; background:#6c757d;">Cancel</button>
+        <button id="deletePatientBtn" onclick="deletePatient()" style="display:none; background:#dc3545;">Delete Patient</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Treatments</h3>
+      <table id="treatmentTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Tooth</th>
+            <th>Description</th>
+            <th>Lab</th>
+            <th>Debit</th>
+            <th>Credit</th>
+            <th>Treated by</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p><strong>Balance:</strong> <span id="balance">0</span></p>
+
+      <h3>Add Treatment</h3>
+      <input type="text" id="treatDate" placeholder="dd/mm/yyyy">
+      <input type="text" id="toothNo" placeholder="Tooth No">
+      <input type="text" id="description" placeholder="Description">
+      <select id="labSelect" onchange="handleLabChange()">
+        <option value="" disabled selected hidden>Lab</option>
+        <option value="Fresh Dental">Fresh Dental</option>
+        <option value="Ibra">Ibra</option>
+        <option value="Valboni">Valboni</option>
+        <option value="Ardent Shala">Ardent Shala</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <input type="text" id="labCustom" placeholder="Enter lab name" style="display:none; margin-top:5px;">
+      <input type="text" id="debit" placeholder="Debit">
+      <input type="text" id="credit" placeholder="Credit">
+      <select id="treatedBy"><option value="0"></option></select>
+      <input type="hidden" id="selectedTreatmentId">
+
+      <div style="display: flex; gap: 10px;">
+        <button id="addTreatmentBtn" onclick="addTreatment()">Add Treatment</button>
+        <button id="updateTreatmentBtn" onclick="updateTreatment()" style="display:none; background:#ffc107;">Update Treatment</button>
+        <button id="cancelEditBtn" onclick="resetTreatmentForm()" style="display:none; background:#6c757d;">Cancel</button>
+        <button id="deleteTreatmentBtn" onclick="deleteSelectedTreatment()" style="display:none; background:#dc3545;">Delete Treatment</button>
+      </div>
+
+      <h3>Patient Photos</h3>
+      <input type="file" id="photoInput" accept="image/png,image/jpeg,image/jpg">
+      <button onclick="uploadPhoto()">Upload Photo</button>
+      <div id="photoPreviewContainer" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;"></div>
+    </div>
+  </div>
+
+  <div id="photoModal" onclick="closePhotoModal(event)">
+  <img id="zoomedImg" src="" />
+  </div>
+
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
