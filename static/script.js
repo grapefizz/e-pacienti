@@ -1,4 +1,4 @@
- function checkLogin() {
+function checkLogin() {
   const user = document.getElementById('loginUser').value;
   const pass = document.getElementById('loginPass').value;
 
@@ -30,6 +30,13 @@ function resetTreatmentForm() {
   if (selectedTreatmentRow) {
     selectedTreatmentRow.classList.remove('selected-row');
     selectedTreatmentRow = null;
+  }
+
+  // ADD THIS LINE to clear the selected card highlight
+  selectedTreatmentId = null;
+  // Optionally, re-render cards if needed:
+  if (typeof renderTreatmentCards === "function" && typeof loadTreatments === "function" && selectedPatientId) {
+    loadTreatments(selectedPatientId);
   }
 }
 
@@ -64,6 +71,7 @@ function handleLabChange() {
  
  let selectedPatientId = null;
  let selectedTreatmentRow = null;
+let selectedTreatmentId = null; // Add this at the top of your script if not already present
 
 
     document.getElementById('search').addEventListener('input', loadPatients);
@@ -229,41 +237,43 @@ async function loadTreatments(id) {
     tbody.appendChild(tr);
     balance += (parseFloat(t.debit) * (-1) || 0) - (parseFloat(t.credit) * (-1) || 0);
 
-      tr.onclick = () => {
-  if (selectedTreatmentRow) selectedTreatmentRow.classList.remove('selected-row');
-  selectedTreatmentRow = tr;
-  tr.classList.add('selected-row');
+    tr.onclick = () => {
+      if (selectedTreatmentRow) selectedTreatmentRow.classList.remove('selected-row');
+      selectedTreatmentRow = tr;
+      tr.classList.add('selected-row');
 
-  document.getElementById('selectedTreatmentId').value = t.id;
-  document.getElementById('treatDate').value = formatDate(t.date || '');
-  document.getElementById('toothNo').value = t.tooth || '';
-  document.getElementById('description').value = t.description || '';
-  const labSelect = document.getElementById('labSelect');
-const labCustom = document.getElementById('labCustom');
-const knownLabs = Array.from(labSelect.options).map(opt => opt.value);
+      document.getElementById('selectedTreatmentId').value = t.id;
+      document.getElementById('treatDate').value = formatDate(t.date || '');
+      document.getElementById('toothNo').value = t.tooth || '';
+      document.getElementById('description').value = t.description || '';
+      const labSelect = document.getElementById('labSelect');
+      const labCustom = document.getElementById('labCustom');
+      const knownLabs = Array.from(labSelect.options).map(opt => opt.value);
 
-if (knownLabs.includes(t.lab)) {
-  labSelect.value = t.lab;
-  labCustom.value = '';
-  labCustom.style.display = 'none';
-} else {
-  labSelect.value = 'Other';
-  labCustom.value = t.lab;
-  labCustom.style.display = 'block';
-}
-  document.getElementById('debit').value = t.debit || '';
-  document.getElementById('credit').value = t.credit || '';
-  document.getElementById('treatedBy').value = t.treater || '0';
+      if (knownLabs.includes(t.lab)) {
+        labSelect.value = t.lab;
+        labCustom.value = '';
+        labCustom.style.display = 'none';
+      } else {
+        labSelect.value = 'Other';
+        labCustom.value = t.lab;
+        labCustom.style.display = 'block';
+      }
+      document.getElementById('debit').value = t.debit || '';
+      document.getElementById('credit').value = t.credit || '';
+      document.getElementById('treatedBy').value = t.treater || '0';
 
-  document.getElementById('addTreatmentBtn').style.display = 'none';
-  document.getElementById('updateTreatmentBtn').style.display = 'inline-block';
-  document.getElementById('cancelEditBtn').style.display = 'inline-block';
-  document.getElementById('deleteTreatmentBtn').style.display = 'inline-block';
-};
-
-
+      document.getElementById('addTreatmentBtn').style.display = 'none';
+      document.getElementById('updateTreatmentBtn').style.display = 'inline-block';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      document.getElementById('deleteTreatmentBtn').style.display = 'inline-block';
+    };
   });
+
   document.getElementById('balance').textContent = balance.toFixed(2);
+
+  // ADD THIS LINE to render cards for mobile
+  renderTreatmentCards(treatments);
 }
 
 
@@ -566,9 +576,59 @@ async function getAccountingData() {
   }
 }
 
+function renderTreatmentCards(treatments) {
+  const container = document.getElementById('treatmentCards');
+  container.innerHTML = '';
+  treatments.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'treatment-card';
+    if (selectedTreatmentId && t.id == selectedTreatmentId) {
+      card.classList.add('selected-card');
+    }
+    card.innerHTML = `
+      <div><strong>Date:</strong> ${formatDate(t.date)}</div>
+      <div><strong>Tooth:</strong> ${t.tooth || ''}</div>
+      <div><strong>Description:</strong> ${t.description || ''}</div>
+      <div><strong>Lab:</strong> ${t.lab || ''}</div>
+      <div><strong>Debit:</strong> ${t.debit || ''}</div>
+      <div><strong>Credit:</strong> ${t.credit || ''}</div>
+      <div><strong>Treated by:</strong> ${(t.treater_name || t.treated_by || '') === 0 ? '' : (t.treater_name || t.treated_by || '')}</div>
+    `;
+    card.onclick = () => {
+      selectedTreatmentId = t.id; // Track selected card
+      // Fill the form as before
+      document.getElementById('selectedTreatmentId').value = t.id;
+      document.getElementById('treatDate').value = formatDate(t.date || '');
+      document.getElementById('toothNo').value = t.tooth || '';
+      document.getElementById('description').value = t.description || '';
+      const labSelect = document.getElementById('labSelect');
+      const labCustom = document.getElementById('labCustom');
+      const knownLabs = Array.from(labSelect.options).map(opt => opt.value);
 
+      if (knownLabs.includes(t.lab)) {
+        labSelect.value = t.lab;
+        labCustom.value = '';
+        labCustom.style.display = 'none';
+      } else {
+        labSelect.value = 'Other';
+        labCustom.value = t.lab;
+        labCustom.style.display = 'block';
+      }
+      document.getElementById('debit').value = t.debit || '';
+      document.getElementById('credit').value = t.credit || '';
+      document.getElementById('treatedBy').value = t.treater || '0';
 
+      document.getElementById('addTreatmentBtn').style.display = 'none';
+      document.getElementById('updateTreatmentBtn').style.display = 'inline-block';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      document.getElementById('deleteTreatmentBtn').style.display = 'inline-block';
 
+      // Re-render to update highlight
+      renderTreatmentCards(treatments);
+    };
+    container.appendChild(card);
+  });
+}
 
 window.onload = () => {
   loadPatients();
@@ -577,4 +637,3 @@ window.onload = () => {
   // It is correctly called from loadPatientInfo() when you select a patient.
   document.getElementById('treatDate').value = getToday();
 };
-    

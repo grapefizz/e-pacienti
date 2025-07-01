@@ -219,6 +219,41 @@
       color: #888 !important;
     }
 
+
+
+@media (max-width: 768px) {
+  #treatmentTable {
+    display: none;
+  }
+  #treatmentCards {
+    display: block;
+  }
+}
+@media (min-width: 769px) {
+  #treatmentCards {
+    display: none;
+  }
+}
+.treatment-card {
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  font-size: 14px;
+}
+.treatment-card strong {
+  display: inline-block;
+  min-width: 80px;
+  color: #1976d2;
+}
+.treatment-card.selected-card {
+  border: 2px solid #1976d2;
+  background: #e3f0fc;
+  box-shadow: 0 2px 12px rgba(25, 118, 210, 0.08);
+}
+
+
 /* Chrome-like tab styles */
 .tab-container {
   display: flex;
@@ -340,6 +375,7 @@
         </thead>
         <tbody></tbody>
       </table>
+      <div id="treatmentCards"></div>
       <p><strong>Balance:</strong> <span id="balance">0</span></p>
 
       <h3>Add Treatment</h3>
