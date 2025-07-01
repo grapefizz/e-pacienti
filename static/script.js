@@ -538,6 +538,35 @@ zoomedImg.addEventListener('mousedown', function (e) {
   document.addEventListener('mouseup', onMouseUp);
 });
 
+function showTab(tab) {
+  const tabs = ['patients', 'accounting'];
+  tabs.forEach(t => {
+    document.getElementById(t + 'Tab').classList.remove('active-tab');
+    document.querySelector(`.tab-button[onclick="showTab('${t}')"]`).classList.remove('active');
+  });
+
+  document.getElementById(tab + 'Tab').classList.add('active-tab');
+  document.querySelector(`.tab-button[onclick="showTab('${tab}')"]`).classList.add('active');
+}
+
+
+
+
+async function getAccountingData() {
+  const from = document.getElementById('accountingFrom').value;
+  const to = document.getElementById('accountingTo').value;
+  if (!from || !to) return alert("Please enter both dates in dd/mm/yyyy format.");
+
+  const res = await fetch(`/accounting_data?start=${encodeURIComponent(from)}&end=${encodeURIComponent(to)}`);
+  const result = await res.json();
+  if (res.ok) {
+    document.getElementById('totalCredit').textContent = result.total_credit.toFixed(2);
+  } else {
+    alert("Error: " + (result.error || "Unknown"));
+  }
+}
+
+
 
 
 

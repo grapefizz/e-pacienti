@@ -97,11 +97,78 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-      }
-    }
+@media (max-width: 768px) {
+  body {
+    padding: 5px;
+  }
+  .container {
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+  }
+  .card {
+    min-width: 0;
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  input, select, button {
+    font-size: 16px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .tab-container {
+    flex-direction: row;
+    padding-left: 0;
+    overflow-x: auto;
+    border-radius: 0;
+  }
+  .tab-button {
+    flex: 1 1 50%;
+    min-width: 120px;
+    font-size: 15px;
+    padding: 10px 0 8px 0;
+    border-radius: 8px 8px 0 0;
+  }
+  table, th, td {
+    font-size: 13px;
+    padding: 6px;
+    word-break: break-word;
+  }
+  #patientList {
+    max-height: 120px;
+    font-size: 15px;
+  }
+  .photo-thumb {
+    width: 70px;
+    height: 70px;
+  }
+  #photoPreviewContainer {
+    gap: 6px;
+  }
+  #photoModal img {
+    max-width: 95vw;
+    max-height: 80vh;
+  }
+  .tab-content {
+    padding-top: 10px;
+  }
+  button, input, select {
+  min-height: 44px;
+
+    th, td {
+    font-size: 12px;
+    padding: 4px;
+    white-space: nowrap;
+  }
+  table {
+    table-layout: auto;
+  }
+}
+
+}
+
 
         /* Zoomable Image Modal */
     #photoModal {
@@ -152,6 +219,57 @@
       color: #888 !important;
     }
 
+/* Chrome-like tab styles */
+.tab-container {
+  display: flex;
+  gap: 0;
+  margin-bottom: -1px;
+  background: #f5f5f7;
+  border-bottom: 1.5px solid #d0d0d0;
+  padding-left: 12px;
+}
+
+.tab-button {
+  position: relative;
+  padding: 12px 32px 10px 32px;
+  background: #e3e6ea;
+  color: #555;
+  border: none;
+  border-radius: 12px 12px 0 0;
+  margin-right: 2px;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: none;
+  z-index: 0;
+}
+
+.tab-button:not(.active):hover {
+  background: #d2d6db;
+  color: #222;
+}
+
+.tab-button.active {
+  background: #fff;
+  color: #1976d2;
+  z-index: 2;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+  border-bottom: 1.5px solid #fff;
+  font-weight: 600;
+}
+
+.tab-content {
+  display: none;
+  padding-top: 20px;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.tab-content.active-tab {
+  display: block;
+}
 
   </style>
 </head>
@@ -178,8 +296,12 @@
   </div>
 </div>
 
-
-  <h2>E-Pacienti</h2>
+<div class="tab-container">
+  <button class="tab-button active" onclick="showTab('patients')">Patients</button>
+  <button class="tab-button" onclick="showTab('accounting')">Accounting</button>
+</div>
+<div id="patientsTab" class="tab-content active-tab">
+    <h2> E-Pacienti</h2>
   <div class="container">
     <div class="card">
       <h3>Patients</h3>
@@ -257,6 +379,20 @@
   <img id="zoomedImg" src="" />
   </div>
 
+</div>
+
+
+<div id="accountingTab" class="tab-content">
+  <h2>Accounting Summary</h2>
+  <div class="card">
+    <label>From Date</label>
+    <input type="text" id="accountingFrom" placeholder="dd/mm/yyyy">
+    <label>To Date</label>
+    <input type="text" id="accountingTo" placeholder="dd/mm/yyyy">
+    <button onclick="getAccountingData()">Get Summary</button>
+    <p style="margin-top: 15px;"><strong>Total Credit:</strong> <span id="totalCredit">0.00</span></p>
+  </div>
+</div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

@@ -412,5 +412,35 @@ def save_photos(data):
         json.dump(data, f, indent=2)
 
 
+@app.route('/accounting_data', methods=['GET'])
+def accounting_data():
+    from datetime import datetime
+
+    try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+
+        # Convert from dd/mm/yyyy to mm/dd/yyyy
+        start_date = datetime.strptime(start, "%d/%m/%Y").strftime("%m/%d/%Y")
+        end_date = datetime.strptime(end, "%d/%m/%Y").strftime("%m/%d/%Y")
+
+        cursor = conn.cursor()
+        query = f"""
+            SELECT SUM(Credit) FROM Treating
+            WHERE [Date] >= #{start_date}# AND [Date] <= #{end_date}#
+        """
+        cursor.execute(query)
+        result = cursor.fetchone()
+        total = result[0] if result and result[0] is not None else 0
+
+        return jsonify({'total_credit': total})
+    except Exception as e:
+        print("Error in /accounting_data:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=8080)
