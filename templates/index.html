@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dental Patient Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Pacienti</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     * {
@@ -306,6 +306,76 @@
   display: block;
 }
 
+#loginOverlay {
+  position: fixed;
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255,255,255,0.95);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: 'Inter', sans-serif;
+}
+
+#teethGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+#teethRow1, #teethRow2 {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 8px;
+  justify-content: center;
+  overflow-x: auto;
+}
+@media (max-width: 700px) {
+  #teethModal > div {
+    min-width: 0 !important;
+    width: 98vw !important;
+    max-width: 98vw !important;
+    padding: 10px 2vw !important;
+  }
+  #teethRow1, #teethRow2 {
+    grid-template-columns: repeat(8, minmax(28px, 1fr)) repeat(8, minmax(28px, 1fr));
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .tooth-btn {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 4px 0 !important;
+  }
+}
+.tooth-btn {
+  width: 36px;
+  height: 36px;
+  background: #f0f4fa;
+  border: 2px solid #1976d2;
+  color: #1976d2;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s, color 0.2s, border 0.2s;
+  outline: none;
+  user-select: none;
+  width: 36px;
+  height: 36px;
+}
+.tooth-btn:hover, .tooth-btn:focus {
+  background: #1976d2;
+  color: #fff;
+  border-color: #1251a3;
+}
   </style>
 </head>
 <body>
@@ -356,6 +426,20 @@
         <button id="updatePatientBtn" onclick="updatePatient()" style="display:none;">Update Patient</button>
         <button id="cancelPatientBtn" onclick="resetPatientForm()" style="display:none; background:#6c757d;">Cancel</button>
         <button id="deletePatientBtn" onclick="deletePatient()" style="display:none; background:#dc3545;">Delete Patient</button>
+      </div>
+
+      <button id="teethBtn" type="button" style="background:#1976d2; color:#fff; margin-bottom:10px; display:none;">Teeth</button>
+
+      <div id="teethModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center;">
+        <div style="background:#fff; padding:20px 16px; border-radius:12px; max-width:98vw; max-height:90vh; overflow:auto;">
+          <h3 style="margin-top:0;">Select Tooth</h3>
+          <div id="teethGrid">
+            <div id="teethRow1"></div>
+            <div id="teethRow2"></div>
+          </div>
+          <div id="toothTreatments" style="margin-top:18px;"></div>
+          <button onclick="closeTeethModal()" style="margin-top:18px; background:#dc3545;">Close</button>
+        </div>
       </div>
     </div>
 
@@ -431,5 +515,18 @@
 </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const socket = io();
+
+  socket.on('data_updated', () => {
+    // Reload patients and treatments/photos if a patient is selected
+    if (typeof loadPatients === "function") loadPatients();
+    if (typeof selectedPatientId !== "undefined" && selectedPatientId) {
+      if (typeof loadTreatments === "function") loadTreatments(selectedPatientId);
+      if (typeof loadPatientPhotos === "function") loadPatientPhotos(selectedPatientId);
+    }
+  });
+</script>
 </body>
 </html>

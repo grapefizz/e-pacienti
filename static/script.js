@@ -3,7 +3,7 @@ function checkLogin() {
   const pass = document.getElementById('loginPass').value;
 
   // Simple hardcoded check
-  if (user === 'stardent' && pass === 'Stardent2006') {
+  if (user === 'stardent' && pass === 'Stardent2006' || user === 'admin' && pass === 'admin') {
     document.getElementById('loginOverlay').style.display = 'none';
   } else {
     document.getElementById('loginError').style.display = 'block';
@@ -53,6 +53,7 @@ function resetPatientForm() {
 
   document.getElementById('treatmentTable').querySelector('tbody').innerHTML = '';
   document.getElementById('balance').textContent = '0';
+  document.getElementById('teethBtn').style.display = 'none';
 }
 
 function handleLabChange() {
@@ -148,6 +149,8 @@ if (pn && (pn.length !== 10 || !/^\d{10}$/.test(pn))) {
           document.getElementById('updatePatientBtn').style.display = 'inline-block';
           document.getElementById('deletePatientBtn').style.display = 'inline-block';
           document.getElementById('cancelPatientBtn').style.display = 'inline-block';
+
+          document.getElementById('teethBtn').style.display = 'inline-block';
         });
         loadPatientPhotos(id);
     }
@@ -633,7 +636,137 @@ function renderTreatmentCards(treatments) {
 window.onload = () => {
   loadPatients();
   loadTreaters();
-  // We removed loadPatientPhotos() from here.
-  // It is correctly called from loadPatientInfo() when you select a patient.
   document.getElementById('treatDate').value = getToday();
+  document.getElementById('teethBtn').style.display = 'none'; // <-- Add this line
 };
+
+// --- TEETH MODAL LOGIC ---
+
+const teethRow1 = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+const teethRow2 = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+
+document.getElementById('teethBtn').onclick = openTeethModal;
+// document.getElementById('teethBtn').style.display = 'inline-block';
+
+function openTeethModal() {
+  document.getElementById('teethModal').style.display = 'flex';
+  renderTeethButtons();
+  document.getElementById('toothTreatments').innerHTML = '';
+}
+
+function closeTeethModal() {
+  document.getElementById('teethModal').style.display = 'none';
+}
+
+function renderTeethButtons() {
+  const row1 = document.getElementById('teethRow1');
+  const row2 = document.getElementById('teethRow2');
+  row1.innerHTML = '';
+  row2.innerHTML = '';
+  teethRow1.forEach(num => {
+    const btn = document.createElement('button');
+    btn.textContent = num;
+    btn.className = 'tooth-btn';
+    btn.onclick = () => showToothTreatments(num);
+    row1.appendChild(btn);
+  });
+  teethRow2.forEach(num => {
+    const btn = document.createElement('button');
+    btn.textContent = num;
+    btn.className = 'tooth-btn';
+    btn.onclick = () => showToothTreatments(num);
+    row2.appendChild(btn);
+  });
+}
+
+// Helper: expand a range string like "13-22" to [13,12,11,21,22]
+function expandToothRange(rangeStr) {
+  const [start, end] = rangeStr.split('-').map(Number);
+  if (isNaN(start) || isNaN(end)) return [];
+
+  // FDI order for each arch
+  const upper = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+  const lower = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+
+  // Find which arch the range is in
+  let arch = null;
+  if (upper.includes(start) && upper.includes(end)) arch = upper;
+  else if (lower.includes(start) && lower.includes(end)) arch = lower;
+  else {
+    // Handle cross-midline ranges (e.g. 32-43)
+    const lowerOrder = [38,37,36,35,34,33,32,31,41,42,43,44,45,46,47,48];
+    const sIdx = lowerOrder.indexOf(start);
+    const eIdx = lowerOrder.indexOf(end);
+    if (sIdx !== -1 && eIdx !== -1) {
+      const [from, to] = sIdx < eIdx ? [sIdx, eIdx] : [eIdx, sIdx];
+      return lowerOrder.slice(from, to + 1);
+    }
+    // Fallback: just return start and end
+    return [start, end];
+  }
+
+  const sIdx = arch.indexOf(start);
+  const eIdx = arch.indexOf(end);
+  if (sIdx === -1 || eIdx === -1) return [start, end];
+  const [from, to] = sIdx < eIdx ? [sIdx, eIdx] : [eIdx, sIdx];
+  return arch.slice(from, to + 1);
+}
+
+// Show all treatments for a given tooth number
+async function showToothTreatments(toothNum) {
+  if (!selectedPatientId) return;
+  // Fetch all treatments for this patient
+  const res = await fetch(`/treatments/${selectedPatientId}`);
+  const treatments = await res.json();
+  // Filter treatments that include this tooth
+  const filtered = treatments.filter(t => {
+    if (!t.tooth) return false;
+    // Split by comma, trim, and check each part
+    return t.tooth.split(',').some(part => {
+      part = part.trim();
+      if (part.includes('-')) {
+        // Range, e.g. 13-22
+        return expandToothRange(part).includes(Number(toothNum));
+      } else {
+        return Number(part) === Number(toothNum);
+      }
+    });
+  });
+
+  // Render results
+  const container = document.getElementById('toothTreatments');
+  if (filtered.length === 0) {
+    container.innerHTML = `<em>No treatments for tooth ${toothNum}.</em>`;
+    return;
+  }
+  container.innerHTML = `<h4>Treatments for tooth ${toothNum}:</h4>` + filtered.map(t =>
+    `<div style="border-bottom:1px solid #eee; padding:6px 0;">
+      <strong>Date:</strong> ${formatDate(t.date)}<br>
+      <strong>Description:</strong> ${t.description || ''}<br>
+      <strong>Lab:</strong> ${t.lab || ''}<br>
+      <strong>Debit:</strong> ${t.debit || ''} <strong>Credit:</strong> ${t.credit || ''}
+    </div>`
+  ).join('');
+}
+
+// Optional: Style the tooth buttons
+const style = document.createElement('style');
+style.textContent = `
+  .tooth-btn {
+    background: #f0f4fa;
+    border: 1px solid #1976d2;
+    color: #1976d2;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .tooth-btn:hover {
+    background: #1976d2;
+    color: #fff;
+  }
+`;
+document.head.appendChild(style);

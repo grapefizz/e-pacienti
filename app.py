@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, send_file, render_template
+from flask_socketio import SocketIO
 import pyodbc
 import os
 import datetime
@@ -10,6 +11,7 @@ from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")  # Allow all origins for dev
 
 app.config['UPLOAD_FOLDER'] = 'photos'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
@@ -206,6 +208,7 @@ def add_treatment(patient_id):
             int(data.get('treated_by') or 0)
         ))
         conn.commit()
+        socketio.emit('data_updated')
         return jsonify({"status": "Treatment added"})
     except Exception as e:
         import traceback
@@ -249,6 +252,7 @@ def delete_treatment(treatment_id):
     cursor = conn.cursor()
     cursor.execute("DELETE FROM Treating WHERE ID=?", (treatment_id,))
     conn.commit()
+    socketio.emit('data_updated')
     return jsonify({"status": "Treatment deleted"})
 
 @app.route('/treaters')
@@ -282,6 +286,7 @@ def update_treatment(treatment_id):
             treatment_id
         ))
         conn.commit()
+        socketio.emit('data_updated')
         return jsonify({"status": "Treatment updated"})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -443,4 +448,4 @@ def accounting_data():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    socketio.run(app, host='0.0.0.0', port=8080)
