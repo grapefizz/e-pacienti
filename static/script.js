@@ -3,7 +3,7 @@ function checkLogin() {
   const pass = document.getElementById('loginPass').value;
 
   // Simple hardcoded check
-  if (user === 'stardent' && pass === 'Stardent2006' || user === 'admin' && pass === 'admin') {
+  if (user === 'stardent' && pass === 'Stardent2006') {
     document.getElementById('loginOverlay').style.display = 'none';
   } else {
     document.getElementById('loginError').style.display = 'block';
