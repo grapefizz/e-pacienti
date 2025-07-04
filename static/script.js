@@ -10,6 +10,33 @@ function checkLogin() {
   }
 }
 
+// --- DATE HANDLING ---
+function formatDateDDMMYYYY(dateInput) {
+  // If input is yyyy-mm-dd (from <input type="date">), split manually
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    const [year, month, day] = dateInput.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  // Otherwise, try to parse as Date object
+  let d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d)) return dateInput || '';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function getToday() {
+  // For <input type="date">, use yyyy-mm-dd, for display use dd/mm/yyyy
+  const today = new Date();
+  return formatDateDDMMYYYY(today);
+}
+
+function formatDate(dateStr) {
+  return formatDateDDMMYYYY(dateStr);
+}
+
+// --- FORM RESET ---
 function resetTreatmentForm() {
   document.getElementById('selectedTreatmentId').value = '';
   document.getElementById('treatDate').value = getToday();
@@ -32,9 +59,7 @@ function resetTreatmentForm() {
     selectedTreatmentRow = null;
   }
 
-  // ADD THIS LINE to clear the selected card highlight
   selectedTreatmentId = null;
-  // Optionally, re-render cards if needed:
   if (typeof renderTreatmentCards === "function" && typeof loadTreatments === "function" && selectedPatientId) {
     loadTreatments(selectedPatientId);
   }
@@ -67,157 +92,139 @@ function handleLabChange() {
   }
 }
 
+let selectedPatientId = null;
+let selectedTreatmentRow = null;
+let selectedTreatmentId = null;
 
+document.getElementById('search').addEventListener('input', loadPatients);
 
- 
- let selectedPatientId = null;
- let selectedTreatmentRow = null;
-let selectedTreatmentId = null; // Add this at the top of your script if not already present
-
-
-    document.getElementById('search').addEventListener('input', loadPatients);
-
-    function formatDate(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      if (isNaN(date)) return dateStr;
-      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-    }
-
-    function getToday() {
-      const today = new Date();
-      return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth()+1).padStart(2, '0')}/${today.getFullYear()}`;
-    }
-
-    async function loadPatients() {
-      const res = await fetch('/patients');
-      const patients = await res.json();
-      const query = document.getElementById('search').value.toLowerCase();
-      const list = document.getElementById('patientList');
-      list.innerHTML = '';
-      patients
-        .filter(p => p.name.toLowerCase().includes(query))
-        .forEach(p => {
-          const div = document.createElement('div');
-          div.className = 'patientItem';
-          div.textContent = p.name;
-          div.onclick = () => loadPatientInfo(p.id);
-          list.appendChild(div);
-        });
-    }
-
-    async function addPatient() {
-      const data = {
-        name: document.getElementById('name').value,
-        tel: document.getElementById('tel').value,
-        dob: document.getElementById('dob').value,
-        address: document.getElementById('address').value,
-        personal_number: document.getElementById('personal_number').value,
-        medical_alert: document.getElementById('medical_alert').value
-      };
-      const pn = data.personal_number.trim();
-if (pn && (pn.length !== 10 || !/^\d{10}$/.test(pn))) {
-  return alert("Personal number must be exactly 10 digits.");
+async function loadPatients() {
+  const res = await fetch('/patients');
+  const patients = await res.json();
+  const query = document.getElementById('search').value.toLowerCase();
+  const list = document.getElementById('patientList');
+  list.innerHTML = '';
+  patients
+    .filter(p => p.name.toLowerCase().includes(query))
+    .forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'patientItem';
+      div.textContent = p.name;
+      div.onclick = () => loadPatientInfo(p.id);
+      list.appendChild(div);
+    });
 }
 
-      if (!data.name.trim()) return alert("Name is required to add a patient.");
-      const res = await fetch('/add_patient', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      alert(result.status);
-      loadPatients();
-    }
+async function addPatient() {
+  const data = {
+    name: document.getElementById('name').value,
+    tel: document.getElementById('tel').value,
+    dob: document.getElementById('dob').value,
+    address: document.getElementById('address').value,
+    personal_number: document.getElementById('personal_number').value,
+    medical_alert: document.getElementById('medical_alert').value
+  };
+  const pn = data.personal_number.trim();
+  if (pn && (pn.length !== 10 || !/^\d{10}$/.test(pn))) {
+    return alert("Personal number must be exactly 10 digits.");
+  }
 
-    function loadPatientInfo(id) {
-      selectedPatientId = id;
-
-      fetch(`/patient/${id}`)
-        .then(res => res.json())
-        .then(p => {
-          document.getElementById('name').value = p.Name || '';
-          document.getElementById('tel').value = p.Tel || '';
-          document.getElementById('dob').value = formatDate(p.BirthDate || '');
-          document.getElementById('address').value = p.Address || '';
-          document.getElementById('personal_number').value = p.personal_number || '';
-          document.getElementById('medical_alert').value = p.MedicalAlert || '';
-          loadTreatments(id);
-
-          document.getElementById('addPatientBtn').style.display = 'none';
-          document.getElementById('updatePatientBtn').style.display = 'inline-block';
-          document.getElementById('deletePatientBtn').style.display = 'inline-block';
-          document.getElementById('cancelPatientBtn').style.display = 'inline-block';
-
-          document.getElementById('teethBtn').style.display = 'inline-block';
-        });
-        loadPatientPhotos(id);
-    }
-
-
-    async function updatePatient() {
-      if (!selectedPatientId) return;
-      const data = {
-        name: document.getElementById('name').value,
-        tel: document.getElementById('tel').value,
-        dob: document.getElementById('dob').value,
-        address: document.getElementById('address').value,
-        personal_number: document.getElementById('personal_number').value,
-        medical_alert: document.getElementById('medical_alert').value
-      };
-
-      const pn = data.personal_number.trim();
-if (pn && (pn.length !== 10 || !/^\d{10}$/.test(pn))) {
-  return alert("Personal number must be exactly 10 digits.");
+  if (!data.name.trim()) return alert("Name is required to add a patient.");
+  const res = await fetch('/add_patient', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  alert(result.status);
+  loadPatients();
 }
 
-      const res = await fetch(`/update_patient/${selectedPatientId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      alert(result.status);
-      loadPatients();
-    }
+function loadPatientInfo(id) {
+  selectedPatientId = id;
 
-    async function deletePatient() {
-      if (!selectedPatientId) return;
-      if (!confirm("Are you sure you want to delete this patient and their treatments?")) return;
-      const res = await fetch(`/delete_patient/${selectedPatientId}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.status);
-      selectedPatientId = null;
-      clearForm();
-      loadPatients();
-      document.querySelector('#treatmentTable tbody').innerHTML = '';
-      document.getElementById('balance').textContent = '0';
-    }
+  fetch(`/patient/${id}`)
+    .then(res => res.json())
+    .then(p => {
+      document.getElementById('name').value = p.Name || '';
+      document.getElementById('tel').value = p.Tel || '';
+      document.getElementById('dob').value = formatDate(p.BirthDate || '');
+      document.getElementById('address').value = p.Address || '';
+      document.getElementById('personal_number').value = p.personal_number || '';
+      document.getElementById('medical_alert').value = p.MedicalAlert || '';
+      loadTreatments(id);
 
-    async function deleteSelectedTreatment() {
-      const treatmentId = document.getElementById('selectedTreatmentId').value;
-      if (!treatmentId) return alert("No treatment selected.");
+      document.getElementById('addPatientBtn').style.display = 'none';
+      document.getElementById('updatePatientBtn').style.display = 'inline-block';
+      document.getElementById('deletePatientBtn').style.display = 'inline-block';
+      document.getElementById('cancelPatientBtn').style.display = 'inline-block';
 
-      const confirmDelete = confirm("Are you sure you want to delete this treatment?");
-      if (!confirmDelete) return;
+      document.getElementById('teethBtn').style.display = 'inline-block';
+    });
+  loadPatientPhotos(id);
+}
 
-      const res = await fetch(`/delete_treatment/${treatmentId}`, {
-        method: 'DELETE'
-      });
+async function updatePatient() {
+  if (!selectedPatientId) return;
+  const data = {
+    name: document.getElementById('name').value,
+    tel: document.getElementById('tel').value,
+    dob: document.getElementById('dob').value,
+    address: document.getElementById('address').value,
+    personal_number: document.getElementById('personal_number').value,
+    medical_alert: document.getElementById('medical_alert').value
+  };
 
-      const result = await res.json();
-      alert(result.status || result.error);
-      resetTreatmentForm();
-      loadTreatments(selectedPatientId);
-    }
+  const pn = data.personal_number.trim();
+  if (pn && (pn.length !== 10 || !/^\d{10}$/.test(pn))) {
+    return alert("Personal number must be exactly 10 digits.");
+  }
 
+  const res = await fetch(`/update_patient/${selectedPatientId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  alert(result.status);
+  loadPatients();
+}
 
-    function clearForm() {
-      ['name','tel','dob','address','personal_number','medical_alert'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-    }
+async function deletePatient() {
+  if (!selectedPatientId) return;
+  if (!confirm("Are you sure you want to delete this patient and their treatments?")) return;
+  const res = await fetch(`/delete_patient/${selectedPatientId}`, { method: 'DELETE' });
+  const result = await res.json();
+  alert(result.status);
+  selectedPatientId = null;
+  clearForm();
+  loadPatients();
+  document.querySelector('#treatmentTable tbody').innerHTML = '';
+  document.getElementById('balance').textContent = '0';
+}
+
+async function deleteSelectedTreatment() {
+  const treatmentId = document.getElementById('selectedTreatmentId').value;
+  if (!treatmentId) return alert("No treatment selected.");
+
+  const confirmDelete = confirm("Are you sure you want to delete this treatment?");
+  if (!confirmDelete) return;
+
+  const res = await fetch(`/delete_treatment/${treatmentId}`, {
+    method: 'DELETE'
+  });
+
+  const result = await res.json();
+  alert(result.status || result.error);
+  resetTreatmentForm();
+  loadTreatments(selectedPatientId);
+}
+
+function clearForm() {
+  ['name','tel','dob','address','personal_number','medical_alert'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
 
 async function loadTreatments(id) {
   const res = await fetch(`/treatments/${id}`);
@@ -275,18 +282,20 @@ async function loadTreatments(id) {
 
   document.getElementById('balance').textContent = balance.toFixed(2);
 
-  // ADD THIS LINE to render cards for mobile
   renderTreatmentCards(treatments);
 }
-
 
 async function updateTreatment() {
   const treatmentId = document.getElementById('selectedTreatmentId').value;
   if (!treatmentId) return;
 
+  // Always format date as dd/mm/yyyy before sending
+  const rawDate = document.getElementById('treatDate').value;
+  const date = formatDateDDMMYYYY(rawDate);
+
   const data = {
     patient_id: selectedPatientId,
-    date: document.getElementById('treatDate').value,
+    date: date,
     tooth_no: document.getElementById('toothNo').value,
     description: document.getElementById('description').value,
     lab: document.getElementById('labSelect').value === 'Other'
@@ -309,72 +318,70 @@ async function updateTreatment() {
   resetTreatmentForm();
 }
 
+async function addTreatment() {
+  if (!selectedPatientId) return alert("Select a patient.");
+  // Always format date as dd/mm/yyyy before sending
+  const rawDate = document.getElementById('treatDate').value;
+  const date = formatDateDDMMYYYY(rawDate);
 
-    async function addTreatment() {
-      if (!selectedPatientId) return alert("Select a patient.");
-      const data = {
-        date: document.getElementById('treatDate').value,
-        tooth: document.getElementById('toothNo').value,
-        description: document.getElementById('description').value,
-        lab: document.getElementById('labSelect').value === 'Other'
+  const data = {
+    date: date,
+    tooth: document.getElementById('toothNo').value,
+    description: document.getElementById('description').value,
+    lab: document.getElementById('labSelect').value === 'Other'
       ? document.getElementById('labCustom').value
       : document.getElementById('labSelect').value,
-        debit: parseFloat(document.getElementById('debit').value) || 0,
-        credit: parseFloat(document.getElementById('credit').value) || 0,
-        treated_by: parseInt(document.getElementById('treatedBy').value) || 0
-      };
-      if (!data.date || !data.description) return alert("Date and description are required.");
-      const res = await fetch(`/add_treatment/${selectedPatientId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      if (res.ok) {
-        alert(result.status);
-        loadTreatments(selectedPatientId);
-      } else {
-        alert("Error: " + (result.error || "Unknown"));
-      }
+    debit: parseFloat(document.getElementById('debit').value) || 0,
+    credit: parseFloat(document.getElementById('credit').value) || 0,
+    treated_by: parseInt(document.getElementById('treatedBy').value) || 0
+  };
+  if (!data.date || !data.description) return alert("Date and description are required.");
+  const res = await fetch(`/add_treatment/${selectedPatientId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  if (res.ok) {
+    alert(result.status);
+    loadTreatments(selectedPatientId);
+  } else {
+    alert("Error: " + (result.error || "Unknown"));
+  }
+}
+
+async function deleteTreatment(id) {
+  if (!confirm("Delete this treatment?")) return;
+  const res = await fetch(`/delete_treatment/${id}`, { method: 'DELETE' });
+  const result = await res.json();
+  alert(result.status);
+  loadTreatments(selectedPatientId);
+}
+
+async function loadTreaters() {
+  const res = await fetch('/treaters');
+  const treaters = await res.json();
+  const select = document.getElementById('treatedBy');
+  select.innerHTML = '';
+
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '0';
+  defaultOption.textContent = '';
+  select.appendChild(defaultOption);
+
+  treaters.forEach(t => {
+    if (t.id !== 0) {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = `${t.id}: ${t.name}`;
+      select.appendChild(opt);
     }
+  });
 
-    async function deleteTreatment(id) {
-      if (!confirm("Delete this treatment?")) return;
-      const res = await fetch(`/delete_treatment/${id}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.status);
-      loadTreatments(selectedPatientId);
-    }
-
-    async function loadTreaters() {
-      const res = await fetch('/treaters');
-      const treaters = await res.json();
-      const select = document.getElementById('treatedBy');
-      select.innerHTML = '';
-
-      // Add the default option manually
-      const defaultOption = document.createElement('option');
-      defaultOption.value = '0';
-      defaultOption.textContent = '';
-      select.appendChild(defaultOption);
-
-      // Append all treaters (excluding ID 0 if already added manually)
-      treaters.forEach(t => {
-        // Avoid adding a duplicate default
-        if (t.id !== 0) {
-          const opt = document.createElement('option');
-          opt.value = t.id;
-          opt.textContent = `${t.id}: ${t.name}`;
-          select.appendChild(opt);
-        }
-      });
-
-      // Explicitly set default selected value
-      select.value = '0';
-    }
+  select.value = '0';
+}
 
 async function loadPatientPhotos(patientId) {
-  // This check is important for the initial page load
   if (!patientId) {
     document.getElementById("photoPreviewContainer").innerHTML = "";
     return;
@@ -387,60 +394,53 @@ async function loadPatientPhotos(patientId) {
   }
 
   const photos = await res.json();
-  console.log("Photos response:", photos); // <-- Add this line for debugging
-
   const container = document.getElementById("photoPreviewContainer");
   container.innerHTML = "";
 
-  // Ensure photos is always an array
   let safePhotos = [];
   if (Array.isArray(photos)) {
     safePhotos = photos;
   } else if (photos && typeof photos === "object" && photos.length === undefined) {
-    // If you get an object, not an array, try to convert to array (optional)
     safePhotos = Object.values(photos);
-  } // else leave as empty array
+  }
 
-safePhotos.forEach(photo => {
-  if (!photo || !photo.filename) return;
+  safePhotos.forEach(photo => {
+    if (!photo || !photo.filename) return;
 
-  // Create a wrapper div for positioning
-  const wrapper = document.createElement("div");
-  wrapper.style.position = "relative";
-  wrapper.style.display = "inline-block";
-  wrapper.style.margin = "5px";
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.display = "inline-block";
+    wrapper.style.margin = "5px";
 
-  // Create the image
-  const img = document.createElement("img");
-  img.src = `/photos/${photo.filename}`;
-  img.classList.add("photo-thumb");
-  img.onclick = () => enlargePhoto(img.src);
+    const img = document.createElement("img");
+    img.src = `/photos/${photo.filename}`;
+    img.classList.add("photo-thumb");
+    img.onclick = () => enlargePhoto(img.src);
 
-  // Create the delete button
-  const delBtn = document.createElement("span");
-  delBtn.textContent = "✖";
-  delBtn.title = "Delete photo";
-  delBtn.style.position = "absolute";
-  delBtn.style.top = "2px";
-  delBtn.style.right = "2px";
-  delBtn.style.background = "rgba(255,255,255,0.8)";
-  delBtn.style.color = "red";
-  delBtn.style.borderRadius = "50%";
-  delBtn.style.padding = "2px 6px";
-  delBtn.style.cursor = "pointer";
-  delBtn.style.fontWeight = "bold";
-  delBtn.style.fontSize = "16px";
-  delBtn.onclick = (e) => {
-    e.stopPropagation();
-    if (confirm("Delete this photo?")) {
-      deletePhoto(photo.filename, patientId);
-    }
-  };
+    const delBtn = document.createElement("span");
+    delBtn.textContent = "✖";
+    delBtn.title = "Delete photo";
+    delBtn.style.position = "absolute";
+    delBtn.style.top = "2px";
+    delBtn.style.right = "2px";
+    delBtn.style.background = "rgba(255,255,255,0.8)";
+    delBtn.style.color = "red";
+    delBtn.style.borderRadius = "50%";
+    delBtn.style.padding = "2px 6px";
+    delBtn.style.cursor = "pointer";
+    delBtn.style.fontWeight = "bold";
+    delBtn.style.fontSize = "16px";
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm("Delete this photo?")) {
+        deletePhoto(photo.filename, patientId);
+      }
+    };
 
-  wrapper.appendChild(img);
-  wrapper.appendChild(delBtn);
-  container.appendChild(wrapper);
-});
+    wrapper.appendChild(img);
+    wrapper.appendChild(delBtn);
+    container.appendChild(wrapper);
+  });
 }
 
 async function deletePhoto(filename, patientId) {
@@ -467,11 +467,8 @@ async function uploadPhoto() {
 
     if (res.ok) {
       alert(result.status || 'Upload successful!');
-      input.value = ''; // Clear the file input
-
-      // <<< FIX: Call the correct function to refresh the gallery >>>
+      input.value = '';
       loadPatientPhotos(selectedPatientId);
-
     } else {
       alert(result.error || 'Upload failed.');
     }
@@ -523,7 +520,7 @@ zoomedImg.addEventListener('wheel', function (e) {
 });
 
 zoomedImg.addEventListener('mousedown', function (e) {
-  e.preventDefault(); // Stop image dragging in browser
+  e.preventDefault();
   isDragging = true;
   startX = e.clientX;
   startY = e.clientY;
@@ -562,9 +559,6 @@ function showTab(tab) {
   document.querySelector(`.tab-button[onclick="showTab('${tab}')"]`).classList.add('active');
 }
 
-
-
-
 async function getAccountingData() {
   const from = document.getElementById('accountingFrom').value;
   const to = document.getElementById('accountingTo').value;
@@ -598,8 +592,7 @@ function renderTreatmentCards(treatments) {
       <div><strong>Treated by:</strong> ${(t.treater_name || t.treated_by || '') === 0 ? '' : (t.treater_name || t.treated_by || '')}</div>
     `;
     card.onclick = () => {
-      selectedTreatmentId = t.id; // Track selected card
-      // Fill the form as before
+      selectedTreatmentId = t.id;
       document.getElementById('selectedTreatmentId').value = t.id;
       document.getElementById('treatDate').value = formatDate(t.date || '');
       document.getElementById('toothNo').value = t.tooth || '';
@@ -626,7 +619,6 @@ function renderTreatmentCards(treatments) {
       document.getElementById('cancelEditBtn').style.display = 'inline-block';
       document.getElementById('deleteTreatmentBtn').style.display = 'inline-block';
 
-      // Re-render to update highlight
       renderTreatmentCards(treatments);
     };
     container.appendChild(card);
@@ -637,7 +629,7 @@ window.onload = () => {
   loadPatients();
   loadTreaters();
   document.getElementById('treatDate').value = getToday();
-  document.getElementById('teethBtn').style.display = 'none'; // <-- Add this line
+  document.getElementById('teethBtn').style.display = 'none';
 };
 
 // --- TEETH MODAL LOGIC ---
@@ -646,7 +638,6 @@ const teethRow1 = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
 const teethRow2 = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
 
 document.getElementById('teethBtn').onclick = openTeethModal;
-// document.getElementById('teethBtn').style.display = 'inline-block';
 
 function openTeethModal() {
   document.getElementById('teethModal').style.display = 'flex';
@@ -715,17 +706,13 @@ function expandToothRange(rangeStr) {
 // Show all treatments for a given tooth number
 async function showToothTreatments(toothNum) {
   if (!selectedPatientId) return;
-  // Fetch all treatments for this patient
   const res = await fetch(`/treatments/${selectedPatientId}`);
   const treatments = await res.json();
-  // Filter treatments that include this tooth
   const filtered = treatments.filter(t => {
     if (!t.tooth) return false;
-    // Split by comma, trim, and check each part
     return t.tooth.split(',').some(part => {
       part = part.trim();
       if (part.includes('-')) {
-        // Range, e.g. 13-22
         return expandToothRange(part).includes(Number(toothNum));
       } else {
         return Number(part) === Number(toothNum);
@@ -733,7 +720,6 @@ async function showToothTreatments(toothNum) {
     });
   });
 
-  // Render results
   const container = document.getElementById('toothTreatments');
   if (filtered.length === 0) {
     container.innerHTML = `<em>No treatments for tooth ${toothNum}.</em>`;
