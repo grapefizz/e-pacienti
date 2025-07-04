@@ -224,7 +224,7 @@ def get_treatments(patient_id):
             FROM Treating T
             LEFT JOIN Treaters R ON T.Tratedby = R.ID
             WHERE T.PatientId = ?
-            ORDER BY T.Date DESC
+            ORDER BY CDate(T.Date) DESC
         """, (patient_id,))
         rows = cursor.fetchall()
         treatments = []
